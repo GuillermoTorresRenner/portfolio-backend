@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  strapi:
+    build: .
+    ports:
+      - "1337:1337"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_CLIENT=sqlite
+      - DATABASE_FILENAME=data/sqlite.db
+    volumes:
+      # Monta la carpeta data para persistir la base de datos
+      - ./data:/app/data
+      # Opcional: también puedes montar uploads si tienes archivos
+      - ./public/uploads:/app/public/uploads
+    restart: unless-stopped

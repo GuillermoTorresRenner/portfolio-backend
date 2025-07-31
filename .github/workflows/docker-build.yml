@@ -1,0 +1,74 @@
+name: Build and Push Strapi Docker Image
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/portfolio-backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Job opcional para verificar que la imagen funciona
+  test-image:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Test Docker image
+        run: |
+          docker run --rm -d --name test-strapi \
+            -p 1337:1337 \
+            -e NODE_ENV=production \
+            -e APP_KEYS="test1,test2" \
+            -e API_TOKEN_SALT=testsalt \
+            -e ADMIN_JWT_SECRET=testjwt \
+            -e TRANSFER_TOKEN_SALT=testtransfer \
+            -e JWT_SECRET=testjwtsecret \
+            -e ENCRYPTION_KEY=testencryption \
+            ${{ secrets.DOCKERHUB_USERNAME }}/portfolio-backend:${{ github.head_ref || github.ref_name }}
+
+          # Esperar que Strapi inicie
+          sleep 30
+
+          # Verificar que responde
+          curl -f http://localhost:1337/admin || exit 1
+
+          # Limpiar
+          docker stop test-strapi
