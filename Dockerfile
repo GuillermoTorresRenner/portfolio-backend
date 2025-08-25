@@ -23,7 +23,7 @@ COPY scripts/init-db.sh /usr/local/bin/init-db.sh
 RUN chmod +x /usr/local/bin/init-db.sh
 
 # Construir la aplicación
-RUN npm run build
+RUN NODE_ENV=production npm run build
 
 # Exponer el puerto
 EXPOSE 1337

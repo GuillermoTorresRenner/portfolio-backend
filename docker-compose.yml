@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
-  strapi:
-    build: .
+  backend:
+    image: lebateleur/portfolio-backend:latest
     ports:
       - "1337:1337"
     env_file:
@@ -17,3 +15,21 @@ services:
       # Opcional: también puedes montar uploads si tienes archivos
       - ./public/uploads:/app/public/uploads
     restart: unless-stopped
+    networks:
+      - portfolio-network
+
+  frontend:
+    image: lebateleur/portfolio:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_BASE_API_URL=http://localhost:1337/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - portfolio-network
+
+networks:
+  portfolio-network:
+    driver: bridge
